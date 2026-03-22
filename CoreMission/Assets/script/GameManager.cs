@@ -83,7 +83,7 @@ public class GameManager : MonoBehaviour
             timer += Time.deltaTime;
 
             if (timerText != null)
-                timerText.text = "TIME " + FormatTime(timer);
+                timerText.text = FormatTime(timer);
         }
     }
 
