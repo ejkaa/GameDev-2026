@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.Collections;
@@ -12,6 +13,7 @@ public class GameManager : MonoBehaviour
     public GameObject gamePanel;
     public GameObject finishPanel;
     public GameObject failPanel;
+    public GameObject starsPanel;
 
     public CrystalManager crystalManager;
 
@@ -29,6 +31,22 @@ public class GameManager : MonoBehaviour
     public TMP_Text recordTextFinish;
     public TMP_Text finishText;
 
+    [Header("Star UI")]
+    public Image star1Image;
+    public Image star2Image;
+    public Image star3Image;
+    public Sprite starEmptySprite;
+    public Sprite starFilledSprite;
+
+    [Header("Game Stars UI")]
+    public Image gameStar1;
+    public Image gameStar2;
+    public Image gameStar3;
+
+    [Header("Star Animation")]
+    public float starPopDuration = 0.35f;
+    public float starDelay = 0.25f;
+
     [Header("Player Control")]
     public MonoBehaviour playerControlScript;
 
@@ -39,7 +57,7 @@ public class GameManager : MonoBehaviour
     private bool gameRunning = false;
     private bool gameFinished = false;
     private bool isNewRecord = false;
-    private int collected;
+
     private const string RecordKey = "BestTime";
 
     void Awake()
@@ -54,6 +72,7 @@ public class GameManager : MonoBehaviour
     {
         ShowStartScreenImmediate();
         RefreshStartRecordUI();
+        SetStarDisplay(0);
     }
 
     void Update()
@@ -78,6 +97,13 @@ public class GameManager : MonoBehaviour
         gameRunning = false;
         gameFinished = false;
         isNewRecord = false;
+        star1Image.transform.localScale = Vector3.zero;
+        star2Image.transform.localScale = Vector3.zero;
+        star3Image.transform.localScale = Vector3.zero;
+
+        SetStarDisplay(0);
+        starsPanel.SetActive(false);
+        UpdateGameStars(0);
 
         if (playerControlScript != null)
             playerControlScript.enabled = false;
@@ -126,41 +152,51 @@ public class GameManager : MonoBehaviour
         if (playerControlScript != null)
             playerControlScript.enabled = false;
 
-        
+        int collected = 0;
+
         if (crystalManager != null)
-        {
             collected = crystalManager.GetCrystal();
-            Debug.Log("Collected crystals: " + collected);
-        }
+
+        if (won)
+            collected += 1;
+
+        collected = Mathf.Clamp(collected, 0, 3);
+
+        SetStarDisplay(collected);
+        starsPanel.SetActive(true);
 
         if (won)
         {
             isNewRecord = SaveRecord(timer);
 
             if (finishText != null)
-                finishText.text = "FINISH";
+                finishText.text = "CONGRATS!";
 
             if (finalTimeText != null)
-                finalTimeText.text = "YOUR TIME\n" + FormatTime(timer);
+                finalTimeText.text = FormatTime(timer);
 
             RefreshFinishRecordUI();
-        }
-        else
-        {
-            yield return StartCoroutine(FadeOutPanel(gamePanel, gameCanvasGroup));
-
-            failPanel.SetActive(true);
-            failCanvasGroup.alpha = 0f;
-            yield return StartCoroutine(FadeInPanel(failPanel, failCanvasGroup));
-
-            yield break;
         }
 
         yield return StartCoroutine(FadeOutPanel(gamePanel, gameCanvasGroup));
 
-        finishPanel.SetActive(true);
-        finishCanvasGroup.alpha = 0f;
-        yield return StartCoroutine(FadeInPanel(finishPanel, finishCanvasGroup));
+        if (won)
+        {
+            finishPanel.SetActive(true);
+            finishCanvasGroup.alpha = 0f;
+            yield return StartCoroutine(FadeInPanel(finishPanel, finishCanvasGroup));
+        }
+        else
+        {
+            failPanel.SetActive(true);
+            failCanvasGroup.alpha = 0f;
+            yield return StartCoroutine(FadeInPanel(failPanel, failCanvasGroup));
+        }
+    }
+
+    void SetStarDisplay(int collected)
+    {
+        StartCoroutine(AnimateStars(collected));
     }
 
     public void RestartGame()
@@ -180,6 +216,7 @@ public class GameManager : MonoBehaviour
         gamePanel.SetActive(false);
         finishPanel.SetActive(false);
         failPanel.SetActive(false);
+        starsPanel.SetActive(false);
 
         startCanvasGroup.alpha = 1f;
         gameCanvasGroup.alpha = 0f;
@@ -190,17 +227,88 @@ public class GameManager : MonoBehaviour
             playerControlScript.enabled = false;
 
         if (timerText != null)
-            timerText.text = "TIME 00:00:00";
+            timerText.text = "00:00:00";
 
         if (countdownText != null)
             countdownText.gameObject.SetActive(false);
     }
 
+    IEnumerator AnimateStars(int collected)
+    {
+        collected = Mathf.Clamp(collected, 0, 3);
+
+        Image[] stars = new Image[] { star1Image, star2Image, star3Image };
+
+        for (int i = 0; i < stars.Length; i++)
+        {
+            stars[i].sprite = starEmptySprite;
+            stars[i].transform.localScale = Vector3.one;
+        }
+
+        yield return new WaitForSeconds(0.4f);
+
+        for (int i = 0; i < collected; i++)
+        {
+            stars[i].sprite = starFilledSprite;
+
+            yield return StartCoroutine(PopStar(stars[i]));
+
+            yield return new WaitForSeconds(starDelay);
+        }
+    }
+
+    IEnumerator PopStar(Image star)
+    {
+        float t = 0f;
+
+        while (t < starPopDuration)
+        {
+            t += Time.deltaTime;
+
+            float progress = t / starPopDuration;
+
+            float scale = Mathf.Lerp(0f, 1.2f, progress);
+            star.transform.localScale = Vector3.one * scale;
+
+            yield return null;
+        }
+
+        // bounce back
+        float bounceTime = 0.15f;
+        t = 0f;
+
+        while (t < bounceTime)
+        {
+            t += Time.deltaTime;
+
+            float progress = t / bounceTime;
+            float scale = Mathf.Lerp(1.2f, 1f, progress);
+
+            star.transform.localScale = Vector3.one * scale;
+
+            yield return null;
+        }
+
+        star.transform.localScale = Vector3.one;
+    }
+
+    public void UpdateGameStars(int collected)
+    {
+        collected = Mathf.Clamp(collected, 0, 3);
+
+        if (gameStar1 != null)
+            gameStar1.sprite = collected >= 1 ? starFilledSprite : starEmptySprite;
+
+        if (gameStar2 != null)
+            gameStar2.sprite = collected >= 2 ? starFilledSprite : starEmptySprite;
+
+        if (gameStar3 != null)
+            gameStar3.sprite = collected >= 3 ? starFilledSprite : starEmptySprite;
+    }
+
     IEnumerator PlayCountdown()
     {
-        yield return StartCoroutine(ShowCountdownStep("3", 0.8f));
-        yield return StartCoroutine(ShowCountdownStep("2", 0.8f));
-        yield return StartCoroutine(ShowCountdownStep("1", 0.8f));
+        yield return StartCoroutine(ShowCountdownStep("READY?", 1.0f));
         yield return StartCoroutine(ShowCountdownStep("GO!", 0.7f));
     }
 
@@ -298,7 +406,7 @@ public class GameManager : MonoBehaviour
 
         float record = PlayerPrefs.GetFloat(RecordKey);
         recordTextStart.gameObject.SetActive(true);
-        recordTextStart.text = "Record: " + FormatTime(record);
+        recordTextStart.text = "Record\n" + FormatTime(record);
     }
 
     void RefreshFinishRecordUI()
@@ -315,9 +423,20 @@ public class GameManager : MonoBehaviour
         recordTextFinish.gameObject.SetActive(true);
 
         if (isNewRecord)
-            recordTextFinish.text = "New Record: " + FormatTime(record);
+        {
+            recordTextFinish.text = "New Record!";
+            recordTextFinish.color = Color.red;
+        }
         else
             recordTextFinish.text = "Record: " + FormatTime(record);
+    }
+
+    public void ResetRecord()
+    {
+        PlayerPrefs.DeleteKey(RecordKey);
+        PlayerPrefs.Save();
+
+        RefreshStartRecordUI();
     }
 
     public bool IsGameRunning()

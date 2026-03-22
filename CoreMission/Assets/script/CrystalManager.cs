@@ -26,6 +26,8 @@ public class CrystalManager : MonoBehaviour
     {
         collectedCrystals++;
         UpdateUI();
+        if (GameManager.Instance != null)
+            GameManager.Instance.UpdateGameStars(collectedCrystals);
     }
 
     public int GetCrystal()
