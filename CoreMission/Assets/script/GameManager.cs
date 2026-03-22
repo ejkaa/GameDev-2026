@@ -57,6 +57,7 @@ public class GameManager : MonoBehaviour
     private bool gameRunning = false;
     private bool gameFinished = false;
     private bool isNewRecord = false;
+    public GameObject resetRecordButton;
 
     private const string RecordKey = "BestTime";
 
@@ -401,12 +402,20 @@ public class GameManager : MonoBehaviour
         if (!PlayerPrefs.HasKey(RecordKey))
         {
             recordTextStart.gameObject.SetActive(false);
+
+            if (resetRecordButton != null)
+                resetRecordButton.SetActive(false);
+
             return;
         }
 
         float record = PlayerPrefs.GetFloat(RecordKey);
+
         recordTextStart.gameObject.SetActive(true);
-        recordTextStart.text = "Record\n" + FormatTime(record);
+        recordTextStart.text = "Record: " + FormatTime(record);
+
+        if (resetRecordButton != null)
+            resetRecordButton.SetActive(true);
     }
 
     void RefreshFinishRecordUI()

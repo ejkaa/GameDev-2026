@@ -62898,6 +62898,7 @@ MonoBehaviour:
   starDelay: 0.25
   playerControlScript: {fileID: 1511916562}
   fadeDuration: 0.35
+  resetRecordButton: {fileID: 676465280}
 --- !u!1001 &1898248692
 PrefabInstance:
   m_ObjectHideFlags: 0
